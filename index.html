@@ -1,0 +1,191 @@
+<!--
+    花城智慧公交 ver 1.0
+
+    使用攀枝花公交公司提供的API
+
+    By DTSDAO
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>花城智慧公交</title>
+    <link rel="stylesheet" href="//cdnjs.loli.net/ajax/libs/mdui/0.4.2/css/mdui.min.css">
+    <style>
+    .bus-count{
+        color: white;
+        border-radius:12px;
+        background-color: rgba(0,0,0,.54);
+    }
+    </style>
+</head>
+<body class="mdui-appbar-with-toolbar mdui-appbar-with-tab mdui-theme-primary-indigo mdui-theme-accent-pink">
+
+<div class="mdui-appbar mdui-appbar-fixed">
+    <div class="mdui-toolbar mdui-color-theme">
+        <a class="mdui-typo-title">花城智慧公交</a>
+    </div>
+    <div class="mdui-tab mdui-color-theme" mdui-tab>
+        <a href="#lin" class="mdui-ripple mdui-ripple-white" id="goto-lin">选择线路</a>
+        <a href="#dir" class="mdui-ripple mdui-ripple-white" id="goto-dir">选择上下行</a>
+        <a href="#sta" class="mdui-ripple mdui-ripple-white" id="goto-sta">查看站点</a>
+    </div>
+</div>
+
+<div class="mdui-container-fluid">
+    <div id="lin">
+        <ul class="mdui-list" id="lin-select">
+            <li class="mdui-list-item mdui-list-item-active mdui-ripple">无数据</li>
+        </ul>
+        <button class="mdui-fab mdui-fab-fixed mdui-color-theme-accent mdui-ripple" onclick="loadLin()"><i class="mdui-icon material-icons">refresh</i></button>
+    </div>
+    <div id="dir">
+        <ul class="mdui-list" id="dir-select">
+            <li class="mdui-list-item mdui-list-item-active mdui-ripple dir-element" id="dir-up">
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-title mdui-list-item-one-line" id="dir-up-name">上行</div>
+                    <div class="mdui-list-item-text mdui-list-item-two-line" id="dir-up-time">未知</div>
+                </div>
+            </li>
+            <li class="mdui-list-item mdui-ripple dir-element" id="dir-down">
+                <div class="mdui-list-item-content">
+                    <div class="mdui-list-item-title mdui-list-item-one-line" id="dir-down-name">下行</div>
+                    <div class="mdui-list-item-text mdui-list-item-two-line" id="dir-down-time">未知</div>
+                </div>
+            </li>
+        </ul>
+        <button class="mdui-fab mdui-fab-fixed mdui-color-theme-accent mdui-ripple" onclick="loadDir()"><i class="mdui-icon material-icons">refresh</i></button>
+    </div>
+    <div id="sta">
+        <ul class="mdui-list" id="sta-list">
+            <li class="mdui-list-item mdui-list-item-active mdui-ripple">无数据</li>
+        </ul>
+        <button class="mdui-fab mdui-fab-fixed mdui-color-theme-accent mdui-ripple" onclick="loadSta()"><i class="mdui-icon material-icons">refresh</i></button>
+    </div>
+</div>
+
+
+<script src="//cdnjs.loli.net/ajax/libs/mdui/0.4.2/js/mdui.min.js"></script>
+<script>
+var $$ = mdui.JQ,
+    Assets = {
+        lineUrl: 'http://{ADDR}:{PORT}/BusService/Require_AllRouteData/',
+        dirUrl: 'http://{ADDR}:{PORT}/BusService/Require_RouteStatData/',
+        staUrl: 'http://{ADDR}:{PORT}/BusService/Query_ByRouteID/',
+        linDir: 0
+    };
+
+$$(document).ajaxError(function (event, xhr, options) {
+    mdui.alert('数据加载失败，请稍后重试');
+});
+
+$$(document).ready(loadLin);
+
+function getID(str) {return str.slice(4,str.length);}
+
+function loadLin(){
+    $$.ajax({
+        method: 'GET',
+        url: Assets.lineUrl,
+        success: function (data) {
+            //Prepare Data
+            Assets.lineData=JSON.parse(data);
+            $$('#lin-select').empty();
+            Assets.sLine=null;
+            $$.each(Assets.lineData.RouteList, function(i,busLine){
+                $$('#lin-select').append('<li class="mdui-list-item mdui-ripple lin-element" id="lin-'+busLine.RouteID+'">'+busLine.RouteName+'</li>');
+            });
+
+            //Bind Events
+            $$('.lin-element').on('click', function (e) {
+                //Style Setup
+                if(Assets.sLine){
+                    $$('#'+Assets.sLine).removeClass('mdui-list-item-active');
+                }
+                Assets.sLine = this.id;
+                $$(this).addClass('mdui-list-item-active');
+
+                //Load Data
+                loadDir();
+
+                //Goto Direction
+                $$('#goto-dir')[0].click();
+            });
+        }
+    });
+}
+
+function loadDir()
+{
+    $$.ajax({
+        method: 'GET',
+        url: Assets.dirUrl,
+        data: {
+            RouteID: getID(Assets.sLine)
+        },
+        success: function (data) {
+            //Prepare Data
+            data=JSON.parse(data);
+            Assets.dirData = data[0].SegmentList;
+            
+            //Change Text
+            $$('#dir-up-name').text('去往 '+Assets.dirData[0].SegmentName);
+            $$('#dir-up-time').text(Assets.dirData[0].FirtLastShiftInfo);
+            if(Assets.dirData.length==2)
+            {
+                $$('#dir-down-name').text('去往 '+Assets.dirData[1].SegmentName);
+                $$('#dir-down-time').text(Assets.dirData[1].FirtLastShiftInfo);
+            }
+            else
+            {
+                $$('#dir-down-name').text('不存在另一个方向');
+                $$('#dir-down-time').text('未知');
+            }
+        }
+    });
+}
+
+$$('.dir-element').on('click', function (e) {
+    //Style Setup
+    $$(Assets.linDir==0?'#dir-up':'#dir-down').removeClass('mdui-list-item-active');
+    Assets.linDir = this.id=='dir-up'?0:1;
+    $$(this).addClass('mdui-list-item-active');
+
+    //Load Data
+    $$('#sta-list').empty();
+    $$.each(Assets.dirData[Assets.linDir].StationList, function(i, station){
+        $$('#sta-list').append('<li class="mdui-list-item mdui-ripple sta-element" id="sta-'+station.StationID+'"><div class="mdui-list-item-content">'+station.StationName+'</div></li>');
+    })
+    
+    loadSta();
+
+    //Goto Station
+    $$('#goto-sta')[0].click();
+});
+
+function loadSta(){
+    $$.ajax({
+        method: 'GET',
+        url: Assets.staUrl,
+        data: {
+            RouteID: getID(Assets.sLine),
+            SegmentID: Assets.dirData[Assets.linDir].SegmentID
+        },
+        success: function (data) {
+            //Prepare Data
+            Assets.staData=JSON.parse(data);
+            $$('.bus-count').remove();
+            $$.each(Assets.staData.RStaRealTInfoList, function(i, busInfo){
+                if($$('#sta-'+busInfo.StationID).children().length == 1){
+                    $$('#sta-'+busInfo.StationID).append('<i class="mdui-list-item-icon mdui-icon bus-count">0</i>');
+                }
+                $$('#sta-'+busInfo.StationID).children('.bus-count')[0].innerHTML = parseInt($$('#sta-'+busInfo.StationID).children('.bus-count')[0].innerHTML)+1;
+            });
+        }
+    });
+}
+
+</script>
+</body>
+</html>
