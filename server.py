@@ -5,62 +5,66 @@ import gzip, json
 from urllib import request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-constConf = {'servAdd':'http://221.10.182.250:55555', 'locAdd':'127.0.0.1', 'locPort':5555}
-contentHTML = ''
+conf = {
+    'servAddr':'http://221.10.182.250:55555',
+    'pubAddr':'http://127.0.0.1:5555',
+    'bindPort':5555
+}
+
+allowAddr = [
+    '/BusService/Query_ByRouteID/',
+    '/BusService/Require_AllRouteData/',
+    '/BusService/Require_RouteStatData/'
+]
+
+HTML = b''
+ICON = b''
 
 class BusService(BaseHTTPRequestHandler):
-    server_version = "BusService/1.0"
+    server_version = 'BusService/1.0'
+    sys_version = ''
     
     def do_GET(self):
-        allowAddr = ['/', '/favicon.ico','/BusService/Query_ByRouteID/','/BusService/Require_AllRouteData/','/BusService/Require_RouteStatData/']
- 
-        self.close_connection = True
         fname=self.path.split('?')[0]
-        if fname in allowAddr:
-            if fname is '/':
-                self._sendHttpHeader(200,'text/html')
-                self._sendHttpBody(contentHTML)
-            elif fname is '/favicon.ico':
-                self._sendHttpHeader(200,'application/x-ico')
-                with open('favicon.ico','rb') as f:
-                    self._sendHttpBody(f.read())
-            else:
-                self._sendHttpHeader(200)
-                with request.urlopen(constConf['servAdd']+self.path) as f:
-                    self._sendHttpBody(f.read())
+        if fname == '/':
+            self._sendHttpHeader(200, 'text/html')
+            self._sendHttpBody(HTML)
+        elif fname == '/favicon.ico':
+            self._sendHttpHeader(200, 'application/x-ico')
+            self._sendHttpBody(ICON)
+        elif fname in allowAddr:
+            self._sendHttpHeader(200, 'application/json')
+            with request.urlopen(conf['servAddr']+self.path) as f:
+                self._sendHttpBody(f.read())
         else:
             self._sendHttpHeader(404)
-            self._sendHttpBody({'msg':'Not Found'})
+            self._sendHttpBody(b'404 Not Found')
 
     def do_POST(self):
-        self.close_connection = True
-        self.send_response(403)
-        self.end_headers()
-        self.wfile.write(b'Not Allowed')
+        self._sendHttpHeader(403)
+        self._sendHttpBody(b'403 Forbidden')
 
-    def _sendHttpHeader(self, code, contentType='application/json'):
+    def _sendHttpHeader(self, code, contentType='text/plain'):
+        self.close_connection = True
         self.send_response(code)
         self.send_header('Content-Type', contentType)
-        self.send_header('Content-Encoding','gzip')
         self.end_headers()
 
     def _sendHttpBody(self, data):
-        body = b''
-        if isinstance(data, bytes):
-            body = data
-        elif isinstance(data, str):
-            body = data.encode('utf-8', errors='ignore')
-        else:
-            body = json.dumps(data).encode('utf-8', errors='ignore')
-        self.wfile.write(gzip.compress(body))
+        self.wfile.write(data)
 
 def main():
-    global contentHTML
+    global HTML, ICON
+
     with open('index.html','r',encoding='utf-8') as f:
-        contentHTML = f.read()
-    contentHTML = contentHTML.replace('{ADDR}',constConf['locAdd']).replace('{PORT}',str(constConf['locPort']))
-    httpd = HTTPServer((constConf['locAdd'], constConf['locPort']), BusService)
-    print('Started BusService At %s:%s' % (constConf['locAdd'], constConf['locPort']))
+        HTML = f.read().replace('{ADDR}',conf['pubAddr']).encode('utf-8')
+
+    with open('favicon.ico','rb') as f:
+        ICON = f.read()
+    
+    print('Started BusService.')
+
+    httpd = HTTPServer(('', conf['bindPort']), BusService)
     httpd.serve_forever()
 
 if __name__ == '__main__':

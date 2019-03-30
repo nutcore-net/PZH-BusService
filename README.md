@@ -1,5 +1,9 @@
 # 花城智慧公交 WebApplication
 
+Github: https://github.com/nutcore-net/PZH-BusService
+
+Gitee: https://gitee.com/dtsdao/PZH-BusService/
+
 ## 简介
 
 > 受 [chainsx](https://github.com/chainsx) 所托写的工具，感谢他提供的API
@@ -24,15 +28,15 @@
    
    或者你也可以下载release里的压缩HTML后的压缩包，然后自行解压
 
-3. 更改 `server.py` 中 `constConf` 的相关值
+3. 更改 `server.py` 中 `conf` 的相关值
    
-   - `servAdd` 为远端API地址
-   - `locAdd` 为你想绑定的本地地址（支持域名）
-   - `locPort` 为你想绑定的本地端口
+   - `servAddr` 为远端API地址
+   - `pubAddr` 为你想绑定的本地地址
+   - `bindPort` 为你想绑定的端口
 
-4. 使用 `python3 server.py` 运行代理服务器
+4. 使用 Python 运行 `server.py` 启动代理服务器
 
-5. 打开浏览器访问你设置的 `locAdd` 和 `locPort` 就可以看到HTML页面
+5. 打开浏览器访问你设置的 `pubAddr`  就可以看到HTML页面
 
 ## 注意事项
 
